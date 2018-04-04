@@ -41,20 +41,40 @@ def system_handler(message):
         bot.send_location(cid, latitude=37.411604, longitude=-6.001790)
         location= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                      ObjectType(ObjectIdentity('RFC1213-MIB', 'sysLocation', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
-        location_answer= str(location[3][1])
+        location_answer= 'sysLocation '+ str(location[3][1])
         bot.send_message(cid, location_answer)
         
         nombre_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                      ObjectType(ObjectIdentity('RFC1213-MIB', 'sysName', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
-        nombre_sistema_answer= str(nombre_sistema[3][1])
+        nombre_sistema_answer= 'sysName: '+ str(nombre_sistema[3][1])
         bot.send_message(cid, nombre_sistema_answer)
         
         tiempo_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                      ObjectType(ObjectIdentity('RFC1213-MIB', 'sysUpTime', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
-        tiempo_sistema_answer= str(tiempo_sistema[3][1])
+        tiempo_sistema_answer= 'sysUpTime: '+ str(tiempo_sistema[3][1])
         bot.send_message(cid, tiempo_sistema_answer)
+        
+        contacto_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                     ObjectType(ObjectIdentity('RFC1213-MIB', 'sysContact', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
+        contacto_sistema_answer= 'sysContact: '+ str(contacto_sistema[3][1])
+        bot.send_message(cid, contacto_sistema_answer)
+        
     elif parametros[1]== 'set':
-       dfs 
+        if  parametros[2]== 'location':
+            location= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                     ObjectType(ObjectIdentity('RFC1213-MIB', 'sysLocation', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
+            location_answer= 'sysLocation ha sido modificado con éxito: '+ str(location[3][1])
+            bot.send_message(cid, location_answer)
+        if  parametros[2]== 'nombre':
+            nombre_sistema= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                     ObjectType(ObjectIdentity('RFC1213-MIB', 'sysName', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
+            nombre_sistema_answer= 'sysName ha sido modificado con éxito: '+ str(nombre_sistema[3][1])
+            bot.send_message(cid, nombre_sistema_answer)
+        if  parametros[2]== 'contacto':
+            contacto_sistema= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                     ObjectType(ObjectIdentity('RFC1213-MIB', 'sysContact', 0)).addAsn1MibSource('http://mibs.snmplabs.com/asn1/RFC1213-MIB')))
+            contacto_sistema_answer= 'sysContact ha sido modificado con éxito: '+ str(contacto_sistema[3][1])
+            bot.send_message(cid, contacto_sistema_answer)
     else:
         bot.send_message(cid, 'Comando no reconocido. Consulte /help') 
         
