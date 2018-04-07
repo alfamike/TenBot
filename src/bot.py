@@ -31,7 +31,7 @@ disponibles.'''
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     cid= message.chat.id
-    help_message= '''Aquí tiene los comandos implementados para la gestión del switch HP-ProCurve:\n/system get - Devuelve la localización, el nombre, el tiempo en marcha y la persona de contacto del sistema.\n/system set - Configura la localización, el nombre y la persona de contacto del sistema.\n/system set localizacion <localizacion>\n/system set nombre <nombre>\n/system set contacto <contacto>\n'''
+    help_message= '''Aquí tiene los comandos implementados para la gestión del switch HP-ProCurve:\n/system get - Devuelve la localización, el nombre, el tiempo en marcha y la persona de contacto del sistema.\n/system set - Configura la localización, el nombre y la persona de contacto del sistema.\n/system set localizacion <localizacion>\n/system set nombre <nombre>\n/system set contacto <contacto>\n/fdb - Devuelve la forwarding database\n'''
     bot.send_message(cid, help_message)
 
 @bot.message_handler(commands=['system'])
@@ -80,6 +80,53 @@ def system_handler(message):
             bot.send_message(cid, 'Comando no reconocido. Consulte /help') 
     except(IndexError):
         bot.send_message(cid, 'Comando incompleto. Consulte /help')
+        
+        
+        
+@bot.message_handler(commands=['fdb'], content_types=['text'])
+def fdb_handler(message):
+    fdbTable= next(bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, 50,
+                            ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')), 
+                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbPort')),
+                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbStatus'))))
+    answer= fdbTable[3]
+    primeraFila= [str(answer[0][1]), answer[0][2], answer[0][3]]
+    segundaFila= [str(answer[1][1]), answer[1][2], answer[1][3]]
+    terceraFila= [str(answer[2][1]), answer[2][2], answer[2][3]]
+    tablaStr= str(primeraFila)+','+str(segundaFila)+','+str(terceraFila)
+    
+    f= open('../tmp/fdb.html','w')
+    pagina= '''<html>
+  <head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['table']});
+      google.charts.setOnLoadCallback(drawTable);
+
+      function drawTable() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'dot1dTpFdbAddress');
+        data.addColumn('number', 'dot1dTpFdbPort');
+        data.addColumn('number', 'dot1dTpFdbStatus');
+        data.addRows(['''+tablaStr+'''
+        ]);
+
+        var table = new google.visualization.Table(document.getElementById('table_div'));
+
+        table.draw(data, {showRowNumber: false, width: '100%', height: '100%'});
+      }
+    </script>
+  </head>
+  <body>
+    <div id="table_div"></div>
+  </body>
+</html>'''
+    f.write(pagina)
+    f.close()
+    f= open('../tmp/fdb.html','r')
+    cid= message.chat.id
+    bot.send_document(cid,f)
+    
 @bot.message_handler(commands=['stats'], content_types=['text'])
 def stats_handler(message):
     f= open('../tmp/prueba.html','w')
@@ -135,8 +182,6 @@ def stats_handler(message):
     f= open('../tmp/prueba.html','r')
     cid= message.chat.id
     bot.send_document(cid,f)
-    #nombre_archivo='file:///C:/Users/Alvaro/OneDrive - UNIVERSIDAD DE SEVILLA/Universidad/Gestión_de_Redes/Proyecto/TenBot/tmp/prueba.html'
-    #webbrowser.open_new(nombre_archivo)
     
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
