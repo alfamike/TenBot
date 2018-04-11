@@ -16,10 +16,10 @@ from pysnmp.smi.rfc1902 import *
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
 bot= telebot.TeleBot(TOKEN)
 motor_snmp= SnmpEngine()
-#comunidad= CommunityData('grupo10')
-#target_agente=UdpTransportTarget(('10.10.10.1', 161))
-comunidad= CommunityData('public')
-target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
+comunidad= CommunityData('grupo10')
+target_agente=UdpTransportTarget(('10.10.10.1', 161))
+#comunidad= CommunityData('public')
+#target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -40,41 +40,58 @@ def system_handler(message):
     parametros= message.text.split()
     try: 
         if parametros[1]== 'get':
-            bot.send_location(cid, latitude=37.411609, longitude=-6.001847)
             location= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysLocation', 0))))
-            location_answer= 'sysLocation: '+ str(location[3][1])
+            location_string=str(location[3][0]).split('=')
+            coordenadas= location_string[1].split()
+            latitude= coordenadas[0]
+            longitude= coordenadas[1]
+            location_answer= 'sysLocation: '+ location_string[1]
+            bot.send_location(cid, latitude, longitude)
             bot.send_message(cid, location_answer)
+            
             nombre_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysName', 0))))
-            nombre_sistema_answer= 'sysName: '+ str(nombre_sistema[3][1])
+            nombre_sistema_string= str(nombre_sistema[3][0]).split('=')
+            nombre_sistema_answer= 'sysName: '+ str(nombre_sistema_string[1])
             bot.send_message(cid, nombre_sistema_answer)
             
             tiempo_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysUpTime', 0))))
-            tiempo_sistema_answer= 'sysUpTime: '+ str(tiempo_sistema[3][1])
+            tiempo_sistema_string= str(tiempo_sistema[3][0]).split('=')
+            tiempo_sistema_answer= 'sysUpTime: '+ str(tiempo_sistema_string[1])
             bot.send_message(cid, tiempo_sistema_answer)
             
             contacto_sistema= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysContact', 0))))
-            contacto_sistema_answer= 'sysContact: '+ str(contacto_sistema[3][1])
+            contacto_sistema_string= str(contacto_sistema[3][0]).split('=')
+            contacto_sistema_answer= 'sysContact: '+ str(contacto_sistema_string[1])
             bot.send_message(cid, contacto_sistema_answer)
             
         elif parametros[1]== 'set':
             if  parametros[2]== 'localizacion':
                 location= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysLocation', 0), parametros[3])))
-                location_answer= 'sysLocation ha sido modificado con éxito: '+ str(location[3][1])
+                location_string=str(location[3][0]).split('=')
+                coordenadas= location_string[1].split()
+                latitude= coordenadas[0]
+                longitude= coordenadas[1]
+                location_answer= 'sysLocation ha sido modificado con éxito: '+ location_string[1]
                 bot.send_message(cid, location_answer)
+                
             if  parametros[2]== 'nombre':
                 nombre_sistema= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysName', 0), parametros[3])))
-                nombre_sistema_answer= 'sysName ha sido modificado con éxito: '+ str(nombre_sistema[3][1])
+                nombre_sistema_string= str(nombre_sistema[3][0]).split('=')
+                nombre_sistema_answer= 'sysName ha sido modificado con éxito: '+ str(nombre_sistema_string[1])
                 bot.send_message(cid, nombre_sistema_answer)
+                
             if  parametros[2]== 'contacto':
                 contacto_sistema= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
                          ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysContact', 0), parametros[3])))
-                contacto_sistema_answer= 'sysContact ha sido modificado con éxito: '+ str(contacto_sistema[3][1])
+                contacto_sistema_string= str(contacto_sistema[3][0]).split('=')
+                contacto_sistema_answer= 'sysContact: '+ str(contacto_sistema_string[1])
+                contacto_sistema_answer= 'sysContact ha sido modificado con éxito: '+ str(contacto_sistema_string[1])
                 bot.send_message(cid, contacto_sistema_answer)
         else:
             bot.send_message(cid, 'Comando no reconocido. Consulte /help') 
@@ -85,7 +102,7 @@ def system_handler(message):
         
 @bot.message_handler(commands=['fdb'], content_types=['text'])
 def fdb_handler(message):
-    fdbTable= next(bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, 50,
+    fdbTable= next(bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, 28,
                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')), 
                              ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbPort')),
                              ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbStatus'))))
