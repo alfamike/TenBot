@@ -8,6 +8,7 @@ import telebot
 import pysnmp
 import pysmi
 from pysnmp.hlapi import *
+from pysnmp.hlapi.asyncore import *
 from telebot.types import *
 from telebot.apihelper import *
 from telebot.util import *
@@ -20,6 +21,7 @@ comunidad= CommunityData('grupo10')
 target_agente=UdpTransportTarget(('10.10.10.1', 161))
 #comunidad= CommunityData('public')
 #target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
+
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -144,59 +146,221 @@ def fdb_handler(message):
     cid= message.chat.id
     bot.send_document(cid,f)
     
-@bot.message_handler(commands=['stats'], content_types=['text'])
-def stats_handler(message):
-    f= open('../tmp/prueba.html','w')
-    pagina= '''<!DOCTYPE HTML><html>
-  <head>
-    <!--Load the AJAX API-->
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
+    
+    
+@bot.message_handler(commands=['frames'], content_types=['text'])
+def frame_handler(message):
+    in_frames='1.3.6.1.2.1.17.4.4.1.3.'
+    out_frames='1.3.6.1.2.1.17.4.4.1.4.'
+    n_puertos=25
+    datos=''
+    i=1
+    coma=','
+    
+    while i < n_puertos+1:
+        indice=str(i)
+        campo_in=in_frames+indice
+        peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('BRIDGE-MIB', campo_in, 0))))
+        
+        frames_in_string= str(peticion_in[3][0]).split('=')
+        frames_in_integer=int(frames_in_string)
+        
+        campo_out=out_frames+indice
+        peticion_out= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('BRIDGE-MIB', campo_out, 0))))
+        
+        frames_out_string= str(peticion_out[3][0]).split('=')
+        frames_out_integer=int(frames_out_string)
+           
+        datos=datos+str([indice,frames_in_integer,frames_out_integer])
+        datos=datos+coma
+         
+        i=i+1
 
-      // Load the Visualization API and the corechart package.
-      google.charts.load('current', {'packages':['corechart']});
+    f= open('../tmp/frames.html','w')
+    pagina='''<html>
+      <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['bar']});
+          google.charts.setOnLoadCallback(drawChart);
 
-      // Set a callback to run when the Google Visualization API is loaded.
-      google.charts.setOnLoadCallback(drawChart);
+          function drawChart() {
+            var data = google.visualization.arrayToDataTable([
+              ['Puerto', 'Tramas Entrantes', 'Tramas Salientes'],
+              '''+datos+'''
+            ]);
 
-      // Callback that creates and populates a data table,
-      // instantiates the pie chart, passes in the data and
-      // draws it.
-      function drawChart() {
+            var options = {
+              chart: {
+                title: 'Company Performance',
+                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+              }
+            };
 
-        // Create the data table.
-        var data = new google.visualization.DataTable();
-        data.addColumn('string', 'Topping');
-        data.addColumn('number', 'Slices');
-        data.addRows([
-          ['Mushrooms', 3],
-          ['Onions', 1],
-          ['Olives', 1],
-          ['Zucchini', 1],
-          ['Pepperoni', 2]
-        ]);
+            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
 
-        // Set chart options
-        var options = {'title':'How Much Pizza I Ate Last Night',
-                       'width':400,
-                       'height':300};
-
-        // Instantiate and draw our chart, passing in some options.
-        var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
-        chart.draw(data, options);
-      }
-    </script>
-  </head>
-
-  <body>
-    <!--Div that will hold the pie chart-->
-    <div id="chart_div"></div>
-  </body>
-</html>'''
+           chart.draw(data, google.charts.Bar.convertOptions(options));
+          }
+        </script>
+      </head>
+      <body>
+        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+      </body>
+    </html>
+    '''   
+    
     f.write(pagina)
     f.close()
 
-    f= open('../tmp/prueba.html','r')
+    f= open('../tmp/tramas.html','r')
+    cid= message.chat.id
+    bot.send_document(cid,f)
+    
+    
+@bot.message_handler(commands=['packages'], content_types=['text'])
+def packages_handler(message):   
+    
+    estado='1.3.6.1.2.1.16.1.1.1.21.'
+    datasource='1.3.6.1.2.1.16.1.1.1.2.'
+    paquetes='1.3.6.1.2.1.16.1.1.1.5.'
+    n_puertos=25
+    datos=''
+    i=1
+    coma=','
+    
+    while i<(n_puertos+1):
+        
+        puerto=str(i)
+        
+        #Actualizamos al siguiente puerto
+        
+        datasourcei=datasource+i
+        estadoi=estado+i
+        paquetesi=paquetes+i
+        
+        #Indicamos el datsource
+        next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB', datasourcei, 0),puerto)))
+        
+        #Indicamos que queremos hacer la peticion
+        next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB',estadoi, 0),'2'))) 
+        
+        
+        paquetesi=next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB',paquetesi, 0))))
+    
+        
+    
+        paquetes_string= str(paquetesi[3][0]).split('=')
+        paquetes_integer=int(paquetes_string)
+           
+        datos=datos+str([puerto,paquetes_integer])
+        datos=datos+coma
+    
+        i=i+1
+        
+    f= open('../tmp/paquetes.html','w')
+    pagina='''<html>
+      <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['bar']});
+          google.charts.setOnLoadCallback(drawChart);
+
+          function drawChart() {
+            var data = google.visualization.arrayToDataTable([
+              ['Puerto', 'Paquetes Entrantes'],
+              '''+datos+'''
+            ]);
+
+            var options = {
+              chart: {
+                title: 'Paquetes Recibidos',
+                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+              }
+            };
+
+            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
+
+           chart.draw(data, google.charts.Bar.convertOptions(options));
+          }
+        </script>
+      </head>
+      <body>
+        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+      </body>
+    </html>
+    '''       
+    
+    f.write(pagina)
+    f.close()
+
+    f= open('../tmp/paquetes.html','r')
+    cid= message.chat.id
+    bot.send_document(cid,f)
+
+
+
+@bot.message_handler(commands=['stats'], content_types=['text'])
+def stats_handler(message):
+    n_puertos=25
+    datos=''
+    i=1
+    j=1000
+    k=1000
+    coma=','
+    
+    while i < n_puertos+1:
+        indice=str(i)
+
+           
+        datos=datos+str([indice,j,k])
+        datos=datos+coma
+         
+        i=i+1
+        j=j+25
+        k=k+12
+
+    f= open('../tmp/tramas.html','w')
+    pagina='''<html>
+      <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['bar']});
+          google.charts.setOnLoadCallback(drawChart);
+
+          function drawChart() {
+            var data = google.visualization.arrayToDataTable([
+              ['Puerto', 'Tramas Entrantes', 'Tramas Salientes'],
+              '''+datos+'''
+            ]);
+
+            var options = {
+              chart: {
+                title: 'Company Performance',
+                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+              }
+            };
+
+            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
+
+           chart.draw(data, google.charts.Bar.convertOptions(options));
+          }
+        </script>
+      </head>
+      <body>
+        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+      </body>
+    </html>
+    '''   
+    
+    f.write(pagina)
+    f.close()
+
+    f= open('../tmp/tramas.html','r')
     cid= message.chat.id
     bot.send_document(cid,f)
     
