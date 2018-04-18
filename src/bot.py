@@ -17,10 +17,10 @@ from pysnmp.smi.rfc1902 import *
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
 bot= telebot.TeleBot(TOKEN)
 motor_snmp= SnmpEngine()
-comunidad= CommunityData('grupo10')
-target_agente=UdpTransportTarget(('10.10.10.1', 161))
-#comunidad= CommunityData('public')
-#target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
+#comunidad= CommunityData('grupo10')
+#target_agente=UdpTransportTarget(('10.10.10.1', 161))
+comunidad= CommunityData('public')
+target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
 
 
 @bot.message_handler(commands=['start'])
@@ -104,19 +104,35 @@ def system_handler(message):
         
 @bot.message_handler(commands=['fdb'], content_types=['text'])
 def fdb_handler(message):
-    fdbTable= next(bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, 28,
+    contador= 0
+    peticion_contador= nextCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')))
+    variable_bucle= True
+    while(variable_bucle):
+        peticion_next= next(peticion_contador)
+        peticion_next_string= (str(peticion_next[3][0]).split('='))[0]
+        if 'dot1dTpFdbAddress' in peticion_next_string == True:
+            contador+=contador
+        else:
+            variable_bucle= False
+    
+    fila= []
+    tablaStr=''
+    peticion= bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, contador,
                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')), 
                              ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbPort')),
-                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbStatus'))))
-    answer= fdbTable[3]
-    primeraFila= [str(answer[0][1]), answer[0][2], answer[0][3]]
-    segundaFila= [str(answer[1][1]), answer[1][2], answer[1][3]]
-    terceraFila= [str(answer[2][1]), answer[2][2], answer[2][3]]
-    tablaStr= str(primeraFila)+','+str(segundaFila)+','+str(terceraFila)
+                             ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbStatus')))
+    for i in range(contador):
+        fdbTable= next(peticion)
+        answer= fdbTable[3]
+        fila[i]= [str(answer[0]).split('=')[1], str(answer[1]).split('=')[1], str(answer[2]).split('=')[1]]
+        if i== contador-1:
+            tablaStr+= str(fila[i])
+        else:
+            tablaStr+= str(fila[i])+','
     
-    f= open('../tmp/fdb.html','w')
-    pagina= '''<html>
-  <head>
+    fdb= open('../tmp/fdb.html','w')
+    pagina_fdb= '''<!DOCTYPE HTML><html>
+  <head><title>Fdb</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
       google.charts.load('current', {'packages':['table']});
@@ -125,9 +141,9 @@ def fdb_handler(message):
       function drawTable() {
         var data = new google.visualization.DataTable();
         data.addColumn('string', 'dot1dTpFdbAddress');
-        data.addColumn('number', 'dot1dTpFdbPort');
-        data.addColumn('number', 'dot1dTpFdbStatus');
-        data.addRows(['''+tablaStr+'''
+        data.addColumn('string', 'dot1dTpFdbPort');
+        data.addColumn('string', 'dot1dTpFdbStatus');
+        data.addRows(['''+str(tablaStr)+'''
         ]);
 
         var table = new google.visualization.Table(document.getElementById('table_div'));
@@ -137,14 +153,15 @@ def fdb_handler(message):
     </script>
   </head>
   <body>
+    <h1>Tabla de direcciones MAC aprendidas por el switch</h1>
     <div id="table_div"></div>
   </body>
 </html>'''
-    f.write(pagina)
-    f.close()
-    f= open('../tmp/fdb.html','r')
+    fdb.write(pagina_fdb)
+    fdb.close()
+    fdb= open('../tmp/fdb.html','r')
     cid= message.chat.id
-    bot.send_document(cid,f)
+    bot.send_document(cid,fdb)
     
     
     
