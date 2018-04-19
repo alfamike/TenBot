@@ -161,6 +161,161 @@ def fdb_handler(message):
     cid= message.chat.id
     bot.send_document(cid,fdb)
     
+
+@bot.message_handler(commands=['frames'], content_types=['text'])
+def frame_handler(message):
+    in_frames='1.3.6.1.2.1.17.4.4.1.3.'
+    out_frames='1.3.6.1.2.1.17.4.4.1.4.'
+    n_puertos=25
+    datos=''
+    i=1
+    coma=','
+    
+    while i < n_puertos+1:
+        indice=str(i)
+        campo_in=in_frames+indice
+        peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('BRIDGE-MIB', campo_in, 0))))
+        
+        frames_in_string= str(peticion_in[3][0]).split('=')
+        frames_in_integer=int(frames_in_string)
+        
+        campo_out=out_frames+indice
+        peticion_out= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('BRIDGE-MIB', campo_out, 0))))
+        
+        frames_out_string= str(peticion_out[3][0]).split('=')
+        frames_out_integer=int(frames_out_string)
+           
+        datos=datos+str([indice,frames_in_integer,frames_out_integer])
+        datos=datos+coma
+         
+        i=i+1
+
+    f= open('../tmp/frames.html','w')
+    pagina='''<html>
+      <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['bar']});
+          google.charts.setOnLoadCallback(drawChart);
+
+          function drawChart() {
+            var data = google.visualization.arrayToDataTable([
+              ['Puerto', 'Tramas Entrantes', 'Tramas Salientes'],
+              '''+datos+'''
+            ]);
+
+            var options = {
+              chart: {
+                title: 'Company Performance',
+                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+              }
+            };
+
+            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
+
+           chart.draw(data, google.charts.Bar.convertOptions(options));
+          }
+        </script>
+      </head>
+      <body>
+        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+      </body>
+    </html>
+    '''   
+    
+    f.write(pagina)
+    f.close()
+
+    f= open('../tmp/tramas.html','r')
+    cid= message.chat.id
+    bot.send_document(cid,f)
+    
+    
+@bot.message_handler(commands=['packages'], content_types=['text'])
+def packages_handler(message):   
+    
+    estado='1.3.6.1.2.1.16.1.1.1.21.'
+    datasource='1.3.6.1.2.1.16.1.1.1.2.'
+    paquetes='1.3.6.1.2.1.16.1.1.1.5.'
+    n_puertos=25
+    datos=''
+    i=1
+    coma=','
+    
+    while i<(n_puertos+1):
+        
+        puerto=str(i)
+        
+        #Actualizamos al siguiente puerto
+        
+        datasourcei=datasource+i
+        estadoi=estado+i
+        paquetesi=paquetes+i
+        
+        #Indicamos el datsource
+        next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB', datasourcei, 0),puerto)))
+        
+        #Indicamos que queremos hacer la peticion
+        next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB',estadoi, 0),'2'))) 
+        
+        
+        paquetesi=next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
+                         ObjectType(ObjectIdentity('RMON-MIB',paquetesi, 0))))
+    
+        
+    
+        paquetes_string= str(paquetesi[3][0]).split('=')
+        paquetes_integer=int(paquetes_string)
+           
+        datos=datos+str([puerto,paquetes_integer])
+        datos=datos+coma
+    
+        i=i+1
+        
+    f= open('../tmp/paquetes.html','w')
+    pagina='''<html>
+      <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['bar']});
+          google.charts.setOnLoadCallback(drawChart);
+
+          function drawChart() {
+            var data = google.visualization.arrayToDataTable([
+              ['Puerto', 'Paquetes Entrantes'],
+              '''+datos+'''
+            ]);
+
+            var options = {
+              chart: {
+                title: 'Paquetes Recibidos',
+                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+              }
+            };
+
+            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
+
+           chart.draw(data, google.charts.Bar.convertOptions(options));
+          }
+        </script>
+      </head>
+      <body>
+        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+      </body>
+    </html>
+    '''       
+    
+    f.write(pagina)
+    f.close()
+
+    f= open('../tmp/paquetes.html','r')
+    cid= message.chat.id
+    bot.send_document(cid,f)    
+    
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
     bot.reply_to(message, message.text)
