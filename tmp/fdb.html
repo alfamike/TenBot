@@ -1,25 +1,31 @@
-<!DOCTYPE HTML><html>
-  <head>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-      google.charts.load('current', {'packages':['table']});
-      google.charts.setOnLoadCallback(drawTable);
-
-      function drawTable() {
-        var data = new google.visualization.DataTable();
-        data.addColumn('string', 'dot1dTpFdbAddress');
-        data.addColumn('string', 'dot1dTpFdbPort');
-        data.addColumn('string', 'dot1dTpFdbStatus');
-        data.addRows([[' 00:24:a8:f6:06:80', ' 0', ' self'],[' 44:8a:5b:ef:2d:b6', ' 3', ' learned'],[' 68:05:ca:31:af:a8', ' 1', ' learned'],[' 0', ' self', ' 1']
-        ]);
-
-        var table = new google.visualization.Table(document.getElementById('table_div'));
-
-        table.draw(data, {showRowNumber: false, width: '100%', height: '100%'});
-      }
-    </script>
-  </head>
-  <body>
-    <div id="table_div"></div>
-  </body>
-</html>
+<!DOCTYPE html><html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fdb</title>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script> 
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script type="text/javascript">
+          google.charts.load('current', {'packages':['table']});
+          google.charts.setOnLoadCallback(drawTable);
+    
+          function drawTable() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'dot1dTpFdbAddress');
+            data.addColumn('string', 'dot1dTpFdbPort');
+            data.addColumn('string', 'dot1dTpFdbStatus');
+            data.addRows([
+            ]);
+    
+            var table = new google.visualization.Table(document.getElementById('table_div'));
+    
+            table.draw(data, {showRowNumber: false, width: '100%', height: '100%'});
+          }
+        </script>
+      </head>
+      <body>
+          <div class="container-fluid">
+        <h1>Tabla de direcciones MAC aprendidas por el switch</h1>
+        <div id="table_div" ></div></div>
+      </body>
+    </html>

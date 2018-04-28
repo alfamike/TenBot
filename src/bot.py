@@ -29,8 +29,7 @@ def start_handler(message):
     usuario= message.from_user
     cid= message.chat.id
     if usuario.id in autorizados:
-        start_message= '''Bienvenido al bot de Gestión del Grupo 10\nUtilice el comando /help para ver las opciones
-    disponibles.'''
+        start_message= '''Bienvenido al bot de Gestión del Grupo 10\nUtilice el comando /help para ver las opciones disponibles.'''
         bot.send_message(cid, start_message)
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
@@ -148,8 +147,12 @@ def fdb_handler(message):
                 tablaStr+= str(fila[i])+','
         
         fdb= open('../tmp/fdb.html','w')
-        pagina_fdb= '''<!DOCTYPE HTML><html>
-      <head><title>Fdb</title>
+        pagina_fdb= '''<!DOCTYPE html><html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fdb</title>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script> 
         <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
         <script type="text/javascript">
           google.charts.load('current', {'packages':['table']});
@@ -170,8 +173,9 @@ def fdb_handler(message):
         </script>
       </head>
       <body>
+          <div class="container-fluid">
         <h1>Tabla de direcciones MAC aprendidas por el switch</h1>
-        <div id="table_div"></div>
+        <div id="table_div" ></div></div>
       </body>
     </html>'''
         fdb.write(pagina_fdb)
@@ -199,14 +203,14 @@ def frame_handler(message):
             indice=str(i)
             campo_in=in_frames+indice
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('BRIDGE-MIB', campo_in, 0))))
+                             ObjectType(ObjectIdentity(campo_in))))
             
             frames_in_string= str(peticion_in[3][0]).split('=')
             frames_in_integer=int(frames_in_string)
             
             campo_out=out_frames+indice
             peticion_out= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('BRIDGE-MIB', campo_out, 0))))
+                             ObjectType(ObjectIdentity(campo_out))))
             
             frames_out_string= str(peticion_out[3][0]).split('=')
             frames_out_integer=int(frames_out_string)
@@ -217,8 +221,13 @@ def frame_handler(message):
             i=i+1
     
         f= open('../tmp/frames.html','w')
-        pagina='''<html>
-          <head>
+        pagina='''<!DOCTYPE html><html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Frames</title>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script> 
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
             <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
             <script type="text/javascript">
               google.charts.load('current', {'packages':['bar']});
@@ -232,8 +241,8 @@ def frame_handler(message):
     
                 var options = {
                   chart: {
-                    title: 'Company Performance',
-                    subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+                    title: 'Tramas de nivel de enlace por puerto',
+                    subtitle: 'HP ProCurve',
                   }
                 };
     
@@ -243,8 +252,8 @@ def frame_handler(message):
               }
             </script>
           </head>
-          <body>
-            <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+          <body><div class="container-fluid">
+            <div id="columnchart_material" style="width: 800px; height: 500px;"></div></div>
           </body>
         </html>
         '''   
@@ -252,7 +261,7 @@ def frame_handler(message):
         f.write(pagina)
         f.close()
     
-        f= open('../tmp/tramas.html','r')
+        f= open('../tmp/frames.html','r')
         
         bot.send_document(cid,f)
     else:
@@ -278,21 +287,21 @@ def packages_handler(message):
             
             #Actualizamos al siguiente puerto
             
-            datasourcei=datasource+i
-            estadoi=estado+i
-            paquetesi=paquetes+i
+            datasourcei=datasource+puerto
+            estadoi=estado+puerto
+            paquetesi=paquetes+puerto
             
             #Indicamos el datsource
             next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('RMON-MIB', datasourcei, 0),puerto)))
+                             ObjectType(ObjectIdentity('RMON-MIB','etherStatsDataSource'),datasourcei)))
             
             #Indicamos que queremos hacer la peticion
             next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('RMON-MIB',estadoi, 0),'2'))) 
+                             ObjectType(ObjectIdentity(estadoi),2))) 
             
             
             paquetesi=next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('RMON-MIB',paquetesi, 0))))
+                             ObjectType(ObjectIdentity(paquetesi))))
         
             
         
@@ -305,8 +314,13 @@ def packages_handler(message):
             i=i+1
             
         f= open('../tmp/paquetes.html','w')
-        pagina='''<html>
-          <head>
+        pagina='''<!DOCTYPE html><html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Paquetes</title>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script> 
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
             <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
             <script type="text/javascript">
               google.charts.load('current', {'packages':['bar']});
@@ -320,8 +334,8 @@ def packages_handler(message):
     
                 var options = {
                   chart: {
-                    title: 'Paquetes Recibidos',
-                    subtitle: 'Sales, Expenses, and Profit: 2014-2017',
+                    title: 'Paquetes recibidos por puerto',
+                    subtitle: 'HP ProCurve',
                   }
                 };
     
@@ -331,8 +345,8 @@ def packages_handler(message):
               }
             </script>
           </head>
-          <body>
-            <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
+          <body><div class="container-fluid">
+            <div id="columnchart_material" style="width: 800px; height: 500px;"></div></div>
           </body>
         </html>
         '''       
