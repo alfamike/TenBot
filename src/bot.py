@@ -4,14 +4,22 @@ Created on 28 mar. 2018
 
 @author: Alvaro
 '''
-import telebot
-import pysnmp
+from multiprocessing import Process, Pipe
+import socketserver
+
+from pyasn1.codec.ber import decoder
 import pysmi
+import pysnmp
+from pysnmp.carrier.asyncore.dgram import udp
+from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from pysnmp.hlapi import *
-from telebot.types import *
-from telebot.apihelper import *
-from telebot.util import *
+from pysnmp.proto import api
 from pysnmp.smi.rfc1902 import *
+import telebot
+from telebot.apihelper import *
+from telebot.types import *
+from telebot.util import *
+
 
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
 bot= telebot.TeleBot(TOKEN)
@@ -20,6 +28,7 @@ motor_snmp= SnmpEngine()
 #target_agente=UdpTransportTarget(('10.10.10.1', 161))
 comunidad= CommunityData('public')
 target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
+
 
 #ACL
 autorizados=[489720960]
@@ -31,10 +40,11 @@ def start_handler(message):
     if usuario.id in autorizados:
         start_message= '''Bienvenido al bot de Gestión del Grupo 10\nUtilice el comando /help para ver las opciones disponibles.'''
         bot.send_message(cid, start_message)
+        print(message.chat.id)
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
-        bot.send_message(cid, denegacion)   
-    
+        bot.send_message(cid, denegacion)
+               
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     usuario= message.from_user
@@ -430,5 +440,42 @@ def echo_all(message):
         bot.reply_to(message, mensaje)
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
-        bot.reply_to(message, denegacion) 
-bot.polling()
+        bot.reply_to(message, denegacion)
+
+class MyUDPHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        data = self.request[0].strip()
+        print(data)             
+        trap=[]
+        while data:
+            msgVer = int(api.decodeMessageVersion(data))
+            if msgVer in api.protoModules:
+                pMod = api.protoModules[msgVer]
+            else:
+                print('Unsupported SNMP version %s' % msgVer)
+                return
+            reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
+            reqPDU = pMod.apiMessage.getPDU(reqMsg)
+            if reqPDU.isSameTypeWith(pMod.TrapPDU()):
+                if msgVer == api.protoVersion1:
+                    agente= 'Agent Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
+                    trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
+                    trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
+                    timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
+                    trap=[agente,trap_generico,trap_especifico,timestamp]
+                    chat_id= -172569293
+                    devolucion= str(trap)
+                    bot.send_message(chat_id, devolucion)
+                    varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
+                else:
+                    varBinds = pMod.apiPDU.getVarBinds(reqPDU)
+                print('Var-binds:')
+                for oid, val in varBinds:
+                    print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
+        return trap
+
+if __name__ == "__main__":
+    HOST, PORT = "localhost", 162
+    with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
+        bot.polling()
+        server.serve_forever()    
