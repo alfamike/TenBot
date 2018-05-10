@@ -4,17 +4,16 @@ Created on 28 mar. 2018
 
 @author: Alvaro
 '''
-from multiprocessing import Process, Pipe
 import socketserver
 
 from pyasn1.codec.ber import decoder
 import pysmi
 import pysnmp
-from pysnmp.carrier.asyncore.dgram import udp
-from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from pysnmp.hlapi import *
 from pysnmp.proto import api
+import pysnmp.proto.rfc1902
 from pysnmp.smi.rfc1902 import *
+import pysnmp.smi.rfc1902
 import telebot
 from telebot.apihelper import *
 from telebot.types import *
@@ -24,14 +23,14 @@ from telebot.util import *
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
 bot= telebot.TeleBot(TOKEN)
 motor_snmp= SnmpEngine()
-#comunidad= CommunityData('grupo10')
-#target_agente=UdpTransportTarget(('10.10.10.1', 161))
-comunidad= CommunityData('public')
-target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
+comunidad= CommunityData('grupo10')
+target_agente=UdpTransportTarget(('10.10.10.1', 161))
+#comunidad= CommunityData('public')
+#target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
 
 
 #ACL
-autorizados=[489720960]
+autorizados=[489720960,558338643]
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -67,7 +66,7 @@ def system_handler(message):
                 location= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysLocation', 0))))
                 location_string=str(location[3][0]).split('=')
-                coordenadas= location_string[1].split()
+                coordenadas= location_string[1].split(',')
                 latitude= coordenadas[0]
                 longitude= coordenadas[1]
                 location_answer= 'sysLocation: '+ location_string[1]
@@ -96,8 +95,9 @@ def system_handler(message):
                 if  parametros[2]== 'localizacion':
                     location= next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity('SNMPv2-MIB', 'sysLocation', 0), parametros[3])))
+                    print(parametros[3])
                     location_string=str(location[3][0]).split('=')
-                    coordenadas= location_string[1].split()
+                    coordenadas= location_string[1].split(',')
                     latitude= coordenadas[0]
                     longitude= coordenadas[1]
                     location_answer= 'sysLocation ha sido modificado con éxito: '+ location_string[1]
@@ -131,17 +131,15 @@ def fdb_handler(message):
     cid= message.chat.id
     if usuario.id in autorizados:
         contador= 0
-        peticion_contador= nextCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbStatus')))
+        peticion_contador= nextCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')))
         variable_bucle= True
         while(variable_bucle):
             peticion_next= next(peticion_contador)
-            peticion_next_string= (str(peticion_next[3][0]).split('='))[0]
-            if 'dot1dTpFdbStatus' in peticion_next_string == True:
-                contador+=contador
+            peticion_next_string= (str(peticion_next[3][0]).split('='))[0].split('.')[0]
+            if 'BRIDGE-MIB::dot1dTpFdbAddress' == peticion_next_string:
+                contador=contador+1
             else:
                 variable_bucle= False
-        
-        fila= []
         tablaStr=''
         peticion= bulkCmd(motor_snmp, comunidad, target_agente, ContextData(), 0, contador,
                                 ObjectType(ObjectIdentity('BRIDGE-MIB','dot1dTpFdbAddress')), 
@@ -150,11 +148,8 @@ def fdb_handler(message):
         for i in range(contador):
             fdbTable= next(peticion)
             answer= fdbTable[3]
-            fila[i]= [str(answer[0]).split('=')[1], str(answer[1]).split('=')[1], str(answer[2]).split('=')[1]]
-            if i== contador-1:
-                tablaStr+= str(fila[i])
-            else:
-                tablaStr+= str(fila[i])+','
+            fila= '['+'\''+str(answer[0]).split('=')[1]+'\''+','+'\''+ str(str(answer[1]).split('=')[1])+'\''+','+'\''+ str(str(answer[2]).split('=')[1])+'\''+']'
+            tablaStr= tablaStr+fila+','
         
         fdb= open('../tmp/fdb.html','w')
         pagina_fdb= '''<!DOCTYPE html><html>
@@ -173,7 +168,7 @@ def fdb_handler(message):
             data.addColumn('string', 'dot1dTpFdbAddress');
             data.addColumn('string', 'dot1dTpFdbPort');
             data.addColumn('string', 'dot1dTpFdbStatus');
-            data.addRows(['''+str(tablaStr)+'''
+            data.addRows(['''+tablaStr+'''
             ]);
     
             var table = new google.visualization.Table(document.getElementById('table_div'));
@@ -215,14 +210,14 @@ def frame_handler(message):
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity(campo_in))))
             
-            frames_in_string= str(peticion_in[3][0]).split('=')
+            frames_in_string= str(peticion_in[3][0]).split('=')[1]
             frames_in_integer=int(frames_in_string)
             
             campo_out=out_frames+indice
             peticion_out= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity(campo_out))))
             
-            frames_out_string= str(peticion_out[3][0]).split('=')
+            frames_out_string= str(peticion_out[3][0]).split('=')[1]
             frames_out_integer=int(frames_out_string)
                
             datos=datos+str([indice,frames_in_integer,frames_out_integer])
@@ -383,7 +378,7 @@ def port_handler (message):
             try: 
                 if parametros[1]== 'list':
                     peticion_port= nextCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                                 ObjectType(ObjectIdentity('IF-MIB','ifIndex')),ObjectType(ObjectIdentity('IF-MIB','ifAdminStatus')))
+                                 ObjectType(ObjectIdentity('IF-MIB','ifIndex')),ObjectType(ObjectIdentity('IF-MIB','ifOperStatus')))
                     for i in range(no_puertos):
                         peticion_port_next= next(peticion_port)
                         respuesta_indice= str(peticion_port_next[3][0]).split('=')[1]
@@ -397,26 +392,29 @@ def port_handler (message):
                         port_list_answer= 'Puerto '+respuesta_indice+':'+respuesta_status
                         bot.send_message(cid, port_list_answer)
                             
-                elif parametros[1]=='get': 
-                    peticion_port= getCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity('IF-MIB','ifAdminStatus',parametros[2])))
+                elif parametros[1]=='get':
+                    get_oid= '1.3.6.1.2.1.2.2.1.8.' 
+                    peticion_port= getCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(get_oid+str(parametros[2]))))
                     peticion_port_next= next(peticion_port)
                     respuesta_status= str(peticion_port_next[3][0]).split('=')[1]
+                    respuesta_status2= str(respuesta_status)
                     
-                    if respuesta_status=='1':
-                        respuesta_status= 'up'
-                    elif respuesta_status=='2':
-                        respuesta_status='down'
-                            
-                    port_get_answer= 'Puerto '+parametros[2]+':'+respuesta_status
+                    if respuesta_status2 == '1':
+                        respuesta_status2= 'up'
+                    elif respuesta_status2 =='2':
+                        respuesta_status2='down'
+                          
+                    port_get_answer= 'Puerto '+parametros[2]+':'+respuesta_status2
                     bot.send_message(cid, port_get_answer)
                 elif parametros[1]=='set':
-                    
+                    print(parametros[3])
                     if parametros[3]=='up':
                         conversion= '1'
                     elif parametros[3]=='down':
-                        conversion='2'
-                        
-                    peticion_port= setCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity('IF-MIB','ifAdminStatus',parametros[2])),conversion)
+                        conversion=2
+                    oid_admin= '1.3.6.1.2.1.2.2.1.7.'
+                    escalar=pysnmp.proto.rfc1902.Integer32(2)    
+                    peticion_port= setCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(oid_admin+str(parametros[2]))), str(escalar))
                     peticion_port_next= next(peticion_port)
                     respuesta_status= str(peticion_port_next[3][0]).split('=')[1]
                     port_set_answer= 'Puerto '+parametros[2]+':'+respuesta_status
@@ -446,7 +444,6 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
         print(data)             
-        trap=[]
         while data:
             msgVer = int(api.decodeMessageVersion(data))
             if msgVer in api.protoModules:
@@ -462,20 +459,20 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
                     trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
                     timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
-                    trap=[agente,trap_generico,trap_especifico,timestamp]
+                    trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
                     chat_id= -172569293
-                    devolucion= str(trap)
-                    bot.send_message(chat_id, devolucion)
-                    varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
-                else:
-                    varBinds = pMod.apiPDU.getVarBinds(reqPDU)
-                print('Var-binds:')
-                for oid, val in varBinds:
-                    print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
-        return trap
-
+                    print(trap)
+                    bot.send_message(chat_id, trap)
+                    #varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
+                #else:
+                    #varBinds = pMod.apiPDU.getVarBinds(reqPDU)
+#                 print('Var-binds:')
+#                 for oid, val in varBinds:
+#                     print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
+        return
+#bot.polling()
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 162
+    HOST, PORT = '0.0.0.0', 162
     with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
         bot.polling()
         server.serve_forever()    
