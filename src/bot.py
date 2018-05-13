@@ -210,15 +210,15 @@ def frame_handler(message):
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity(campo_in))))
             
-            frames_in_string= str(peticion_in[3][0]).split('=')[1]
-            frames_in_integer=int(frames_in_string)
+            frames_in_counter= str(peticion_in[3][0]).split('=')[1]
+            frames_in_integer=int(pysnmp.proto.rfc1902.Counter32(frames_in_counter))
             
             campo_out=out_frames+indice
             peticion_out= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
                              ObjectType(ObjectIdentity(campo_out))))
             
-            frames_out_string= str(peticion_out[3][0]).split('=')[1]
-            frames_out_integer=int(frames_out_string)
+            frames_out_counter= str(peticion_out[3][0]).split('=')[1]
+            frames_out_integer=int(pysnmp.proto.rfc1902.Counter32(frames_out_counter))
                
             datos=datos+str([indice,frames_in_integer,frames_out_integer])
             datos=datos+coma
@@ -279,7 +279,7 @@ def packages_handler(message):
     cid= message.chat.id
     if usuario.id in autorizados:
         estado='1.3.6.1.2.1.16.1.1.1.21.'
-        datasource='1.3.6.1.2.1.16.1.1.1.2.'
+        datasource='1.3.6.1.2.1.2.2.1.1.'
         paquetes='1.3.6.1.2.1.16.1.1.1.5.'
         n_puertos=26
         datos=''
@@ -296,13 +296,14 @@ def packages_handler(message):
             estadoi=estado+puerto
             paquetesi=paquetes+puerto
             
+            datasource_oid= pysnmp.proto.rfc1902.ObjectIdentifier(datasourcei)
             #Indicamos el datsource
             next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity('RMON-MIB','etherStatsDataSource'),datasourcei)))
+                             ObjectType(ObjectIdentity('RMON-MIB','etherStatsDataSource'),datasource_oid)))
             
             #Indicamos que queremos hacer la peticion
             next(setCmd(motor_snmp, comunidad,target_agente,ContextData(),
-                             ObjectType(ObjectIdentity(estadoi),2))) 
+                             ObjectType(ObjectIdentity(estadoi),pysnmp.proto.rfc1902.Integer(2)))) 
             
             
             paquetesi=next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
@@ -384,37 +385,46 @@ def port_handler (message):
                         respuesta_indice= str(peticion_port_next[3][0]).split('=')[1]
                         respuesta_status= str(peticion_port_next[3][1]).split('=')[1]
                         
-                        if respuesta_status=='1':
-                            respuesta_status= 'up'
-                        elif respuesta_status=='2':
-                            respuesta_status='down'
+                        up= 'up'
+                        down='down'
+                        uno= '1'
+                        dos='2'
+                        
+                        if respuesta_status==uno:
+                            respuesta_status= up
+                        elif respuesta_status==dos:
+                            respuesta_status=down
                         
                         port_list_answer= 'Puerto '+respuesta_indice+':'+respuesta_status
                         bot.send_message(cid, port_list_answer)
                             
                 elif parametros[1]=='get':
                     get_oid= '1.3.6.1.2.1.2.2.1.8.' 
-                    peticion_port= getCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(get_oid+str(parametros[2]))))
+                    peticion_port= getCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(get_oid+parametros[2])))
                     peticion_port_next= next(peticion_port)
                     respuesta_status= str(peticion_port_next[3][0]).split('=')[1]
-                    respuesta_status2= str(respuesta_status)
                     
-                    if respuesta_status2 == '1':
-                        respuesta_status2= 'up'
-                    elif respuesta_status2 =='2':
-                        respuesta_status2='down'
+                    up= 'up'
+                    down='down'
+                    uno= '1'
+                    dos='2'
+                    
+                    if respuesta_status==uno:
+                        respuesta_status= up
+                    elif respuesta_status==dos:
+                        respuesta_status=down
                           
-                    port_get_answer= 'Puerto '+parametros[2]+':'+respuesta_status2
+                    port_get_answer= 'Puerto '+parametros[2]+':'+respuesta_status
                     bot.send_message(cid, port_get_answer)
                 elif parametros[1]=='set':
-                    print(parametros[3])
+                    
                     if parametros[3]=='up':
-                        conversion= '1'
+                        conversion=1
                     elif parametros[3]=='down':
                         conversion=2
                     oid_admin= '1.3.6.1.2.1.2.2.1.7.'
-                    escalar=pysnmp.proto.rfc1902.Integer32(2)    
-                    peticion_port= setCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(oid_admin+str(parametros[2]))), str(escalar))
+                    escalar=pysnmp.proto.rfc1902.Integer(conversion)
+                    peticion_port= setCmd(motor_snmp, comunidad, target_agente, ContextData(),ObjectType(ObjectIdentity(oid_admin+parametros[2]),escalar))
                     peticion_port_next= next(peticion_port)
                     respuesta_status= str(peticion_port_next[3][0]).split('=')[1]
                     port_set_answer= 'Puerto '+parametros[2]+':'+respuesta_status
@@ -444,25 +454,22 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
         print(data)             
-        while data:
-            msgVer = int(api.decodeMessageVersion(data))
-            if msgVer in api.protoModules:
-                pMod = api.protoModules[msgVer]
-            else:
-                print('Unsupported SNMP version %s' % msgVer)
-                return
-            reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
-            reqPDU = pMod.apiMessage.getPDU(reqMsg)
-            if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-                if msgVer == api.protoVersion1:
-                    agente= 'Agent Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
-                    trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
-                    trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
-                    timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
-                    trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
-                    chat_id= -172569293
-                    print(trap)
-                    bot.send_message(chat_id, trap)
+        msgVer = int(api.decodeMessageVersion(data))
+        if msgVer in api.protoModules:
+            pMod = api.protoModules[msgVer]
+            
+        reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
+        reqPDU = pMod.apiMessage.getPDU(reqMsg)
+        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
+            if msgVer == api.protoVersion2c:
+                agente= 'Agent   Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
+                trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
+                trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
+                timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
+                trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
+                chat_id= -172569293
+                print(trap)
+                    #bot.send_message(chat_id, trap)
                     #varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
                 #else:
                     #varBinds = pMod.apiPDU.getVarBinds(reqPDU)
@@ -475,4 +482,8 @@ if __name__ == "__main__":
     HOST, PORT = '0.0.0.0', 162
     with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
         bot.polling()
+        print ('a')
+        server.allow_reuse_address= True
         server.serve_forever()    
+        print('b')
+        print(MyUDPHandler.request)
