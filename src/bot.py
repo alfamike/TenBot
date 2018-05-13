@@ -451,4 +451,40 @@ def echo_all(message):
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.reply_to(message, denegacion)
 
-bot.polling
+class MyUDPHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        data = self.request[0].strip()
+        print(data)             
+        msgVer = int(api.decodeMessageVersion(data))
+        if msgVer in api.protoModules:
+            pMod = api.protoModules[msgVer]
+            
+        reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
+        reqPDU = pMod.apiMessage.getPDU(reqMsg)
+        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
+            if msgVer == api.protoVersion2c:
+                agente= 'Agent   Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
+                trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
+                trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
+                timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
+                trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
+                chat_id= -172569293
+                print(trap)
+                    #bot.send_message(chat_id, trap)
+                    #varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
+                #else:
+                    #varBinds = pMod.apiPDU.getVarBinds(reqPDU)
+#                 print('Var-binds:')
+#                 for oid, val in varBinds:
+#                     print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
+        return
+#bot.polling()
+if __name__ == "__main__":
+    HOST, PORT = '0.0.0.0', 162
+    with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
+        bot.polling()
+        print ('a')
+        server.allow_reuse_address= True
+        server.serve_forever()    
+        print('b')
+        print(MyUDPHandler.request)
