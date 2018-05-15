@@ -451,4 +451,4 @@ def echo_all(message):
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.reply_to(message, denegacion)
 
-bot.polling
+bot.polling()
