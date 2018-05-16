@@ -202,10 +202,10 @@ def frame_handler(message):
         out_frames='1.3.6.1.2.1.17.4.4.1.4.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i < n_puertos:
+        while i <= n_puertos:
             indice=str(i)
             campo_in=in_frames+indice
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
@@ -225,7 +225,7 @@ def frame_handler(message):
             datos=datos+coma
              
             i=i+1
-    
+        print(datos)
         f= open('../tmp/frames.html','w')
         pagina='''<!DOCTYPE html><html>
           <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Frames</title>
@@ -284,10 +284,10 @@ def packages_handler(message):
         paquetes='1.3.6.1.2.1.16.1.1.1.5.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i<n_puertos:
+        while i<=n_puertos:
             
             puerto=str(i)
             
@@ -312,7 +312,7 @@ def packages_handler(message):
         
             
         
-            paquetes_string= str(paquetesi[3][0]).split('=')
+            paquetes_string= str(paquetesi[3][0]).split('=')[1]
             paquetes_integer=int(paquetes_string)
                
             datos=datos+str([puerto,paquetes_integer])
@@ -450,41 +450,5 @@ def echo_all(message):
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.reply_to(message, denegacion)
-
-class MyUDPHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        data = self.request[0].strip()
-        print(data)             
-        msgVer = int(api.decodeMessageVersion(data))
-        if msgVer in api.protoModules:
-            pMod = api.protoModules[msgVer]
-            
-        reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
-        reqPDU = pMod.apiMessage.getPDU(reqMsg)
-        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-            if msgVer == api.protoVersion2c:
-                agente= 'Agent   Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
-                trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
-                trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
-                timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
-                trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
-                chat_id= -172569293
-                print(trap)
-                    #bot.send_message(chat_id, trap)
-                    #varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
-                #else:
-                    #varBinds = pMod.apiPDU.getVarBinds(reqPDU)
-#                 print('Var-binds:')
-#                 for oid, val in varBinds:
-#                     print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
-        return
-#bot.polling()
-if __name__ == "__main__":
-    HOST, PORT = '0.0.0.0', 162
-    with socketserver.UDPServer((HOST, PORT), MyUDPHandler) as server:
-        bot.polling()
-        print ('a')
-        server.allow_reuse_address= True
-        server.serve_forever()    
-        print('b')
-        print(MyUDPHandler.request)
+        
+bot.polling()
