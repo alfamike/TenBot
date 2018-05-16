@@ -202,10 +202,10 @@ def frame_handler(message):
         out_frames='1.3.6.1.2.1.17.4.4.1.4.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i < n_puertos:
+        while i <= n_puertos:
             indice=str(i)
             campo_in=in_frames+indice
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
@@ -225,7 +225,7 @@ def frame_handler(message):
             datos=datos+coma
              
             i=i+1
-    
+        print(datos)
         f= open('../tmp/frames.html','w')
         pagina='''<!DOCTYPE html><html>
           <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Frames</title>
@@ -284,10 +284,10 @@ def packages_handler(message):
         paquetes='1.3.6.1.2.1.16.1.1.1.5.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i<n_puertos:
+        while i<=n_puertos:
             
             puerto=str(i)
             
@@ -312,7 +312,7 @@ def packages_handler(message):
         
             
         
-            paquetes_string= str(paquetesi[3][0]).split('=')
+            paquetes_string= str(paquetesi[3][0]).split('=')[1]
             paquetes_integer=int(paquetes_string)
                
             datos=datos+str([puerto,paquetes_integer])

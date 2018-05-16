@@ -1,31 +1,36 @@
-<html>
-      <head>
-        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-        <script type="text/javascript">
-          google.charts.load('current', {'packages':['bar']});
-          google.charts.setOnLoadCallback(drawChart);
-
-          function drawChart() {
-            var data = google.visualization.arrayToDataTable([
-              ['Puerto', 'Tramas Entrantes', 'Tramas Salientes'],
-              ['1', 1000, 1000],['2', 1025, 1012],['3', 1050, 1024],['4', 1075, 1036],['5', 1100, 1048],['6', 1125, 1060],['7', 1150, 1072],['8', 1175, 1084],['9', 1200, 1096],['10', 1225, 1108],['11', 1250, 1120],['12', 1275, 1132],['13', 1300, 1144],['14', 1325, 1156],['15', 1350, 1168],['16', 1375, 1180],['17', 1400, 1192],['18', 1425, 1204],['19', 1450, 1216],['20', 1475, 1228],['21', 1500, 1240],['22', 1525, 1252],['23', 1550, 1264],['24', 1575, 1276],['25', 1600, 1288],
-            ]);
-
-            var options = {
-              chart: {
-                title: 'Company Performance',
-                subtitle: 'Sales, Expenses, and Profit: 2014-2017',
-              }
-            };
-
-            var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
-
-           chart.draw(data, google.charts.Bar.convertOptions(options));
-          }
-        </script>
-      </head>
-      <body>
-        <div id="columnchart_material" style="width: 800px; height: 500px;"></div>
-      </body>
-    </html>
+<!DOCTYPE html><html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Frames</title>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script> 
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript">
+              google.charts.load('current', {'packages':['bar']});
+              google.charts.setOnLoadCallback(drawChart);
     
+              function drawChart() {
+                var data = google.visualization.arrayToDataTable([
+                  ['Puerto', 'Tramas Entrantes', 'Tramas Salientes'],
+                  ['1', 563, 1692],['2', 0, 0],['3', 0, 0],['4', 0, 0],['5', 0, 0],['6', 0, 0],['7', 834, 1220],['8', 0, 0],['9', 0, 0],['10', 0, 0],['11', 0, 0],['12', 1005, 1661],['13', 0, 0],['14', 0, 0],['15', 129, 58],['16', 0, 0],['17', 0, 0],['18', 0, 0],['19', 0, 0],['20', 0, 0],['21', 0, 0],['22', 0, 0],['23', 0, 0],['24', 0, 0],['25', 0, 0],['26', 0, 0],
+                ]);
+    
+                var options = {
+                  chart: {
+                    title: 'Tramas de nivel de enlace por puerto',
+                    subtitle: 'HP ProCurve',
+                  }
+                };
+    
+                var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
+    
+               chart.draw(data, google.charts.Bar.convertOptions(options));
+              }
+            </script>
+          </head>
+          <body><div class="container-fluid">
+            <div id="columnchart_material" style="width: 800px; height: 500px;"></div></div>
+          </body>
+        </html>
+        
