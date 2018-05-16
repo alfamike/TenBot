@@ -7,6 +7,7 @@ Created on 28 mar. 2018
 '''
 import socketserver
 import threading
+import time
 
 from pyasn1.codec.ber import decoder
 import pysmi
@@ -20,8 +21,6 @@ import telebot
 from telebot.apihelper import *
 from telebot.types import *
 from telebot.util import *
-import time
-
 
 
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
@@ -449,7 +448,12 @@ def port_handler (message):
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.send_message(cid, denegacion) 
     
-        
+@bot.message_handler(commands=['log'], content_types=['text'])
+def log_handler(message):
+    cid= message.chat.id
+    file= open('../log/log.txt','r')
+    bot.send_document(cid, file)
+           
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
     usuario= message.from_user
@@ -460,11 +464,7 @@ def echo_all(message):
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.reply_to(message, denegacion)
                  
-@bot.message_handler(commands=['log'], content_types=['text'])
-def log_handler(message):
-    cid= message.chat.id
-    file= open('../log/log.txt','r')
-    bot.send_document(cid, file)
+
 def trap_handler():
     class MyUDPHandler(socketserver.BaseRequestHandler):
         def handle(self):
