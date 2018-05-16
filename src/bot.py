@@ -46,8 +46,8 @@ def start_handler(message):
         log.close()
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
-        log= open('../log/log.txt','a')
-        mensaje_denegacion_log= nombre_usuario+' se ha intentado conectar al bot: '+time.strftime('%c')+'\n'
+        log= open('../log/log.txt','a','utf-8')
+        mensaje_denegacion_log= nombre_usuario+' se ha intentado conectar al bot: '+time.strftime('%c')+'\n\n'
         log.write(mensaje_denegacion_log)
         log.close()
         bot.send_message(cid, denegacion)
