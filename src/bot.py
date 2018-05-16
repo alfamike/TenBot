@@ -6,6 +6,7 @@ Created on 28 mar. 2018
 @version: 1.0
 '''
 import socketserver
+import threading
 
 from pyasn1.codec.ber import decoder
 import pysmi
@@ -19,40 +20,45 @@ import telebot
 from telebot.apihelper import *
 from telebot.types import *
 from telebot.util import *
-import subprocess
-import asyncio.subprocess
-from asyncio.events import AbstractEventLoop
+import time
+
 
 TOKEN= "583704103:AAEiWiGV2XxMzRNDJGiJ2FSseR4InXB_un8"
 bot= telebot.TeleBot(TOKEN)
 motor_snmp= SnmpEngine()
 comunidad= CommunityData('grupo10')
 target_agente=UdpTransportTarget(('10.10.10.1', 161))
-#comunidad= CommunityData('public')
-#target_agente=UdpTransportTarget(('demo.snmplabs.com', 161))
-
 
 #ACL
-autorizados=[489720960,558338643]
+autorizados=[489720960] #558338643
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     usuario= message.from_user
+    chat_id= -172569293
+    nombre_usuario= message.from_user.first_name
     cid= message.chat.id
     if usuario.id in autorizados:
         start_message= '''Bienvenido al bot de Gestión del Grupo 10\nUtilice el comando /help para ver las opciones disponibles.'''
         bot.send_message(cid, start_message)
-        print(message.chat.id)
+        log= open('../log/log.txt','a')
+        log.write(nombre_usuario+' se ha conectado al bot: '+time.strftime('%c')+'\n')
+        log.close()
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
+        log= open('../log/log.txt','a')
+        mensaje_denegacion_log= nombre_usuario+' se ha intentado conectar al bot: '+time.strftime('%c')+'\n'
+        log.write(mensaje_denegacion_log)
+        log.close()
         bot.send_message(cid, denegacion)
+        bot.send_message(chat_id, mensaje_denegacion_log)
                
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     usuario= message.from_user
     cid= message.chat.id
     if usuario.id in autorizados:
-        help_message= '''Aquí tiene los comandos implementados para la gestión del switch HP-ProCurve:\n/system get - Devuelve la localización, el nombre, el tiempo en marcha y la persona de contacto del sistema.\n/system set - Configura la localización, el nombre y la persona de contacto del sistema.\n/system set localizacion <localizacion>\n/system set nombre <nombre>\n/system set contacto <contacto>\n/fdb - Devuelve la forwarding database\n/frames - Devuelve una gráfica con las tramas del nivel de enlace por puerto.\n/packages - Devuelve el número de paquetes totales por puerto.\n/port list - Devuelve un listado con el estado de los puertos\n/port get <nºpuerto> - Devuelve el estado del puerto pedido.\n/port set <nºpuerto> <estado(up o down)> - Configura el estado de un puerto.\n'''
+        help_message= '''Aquí tiene los comandos implementados para la gestión del switch HP-ProCurve:\n/system get - Devuelve la localización, el nombre, el tiempo en marcha y la persona de contacto del sistema.\n/system set - Configura la localización, el nombre y la persona de contacto del sistema.\n/system set localizacion <localizacion>\n/system set nombre <nombre>\n/system set contacto <contacto>\n/fdb - Devuelve la forwarding database\n/frames - Devuelve una gráfica con las tramas del nivel de enlace por puerto.\n/packages - Devuelve el número de paquetes totales por puerto.\n/port list - Devuelve un listado con el estado de los puertos\n/port get <nºpuerto> - Devuelve el estado del puerto pedido.\n/port set <nºpuerto> <estado(up o down)> - Configura el estado de un puerto.\n/log Obtener el log\n'''
         bot.send_message(cid, help_message)
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
@@ -204,10 +210,10 @@ def frame_handler(message):
         out_frames='1.3.6.1.2.1.17.4.4.1.4.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i < n_puertos:
+        while i <= n_puertos:
             indice=str(i)
             campo_in=in_frames+indice
             peticion_in= next(getCmd(motor_snmp, comunidad,target_agente,ContextData(),
@@ -286,10 +292,10 @@ def packages_handler(message):
         paquetes='1.3.6.1.2.1.16.1.1.1.5.'
         n_puertos=26
         datos=''
-        i=0
+        i=1
         coma=','
         
-        while i<n_puertos:
+        while i<=n_puertos:
             
             puerto=str(i)
             
@@ -314,7 +320,7 @@ def packages_handler(message):
         
             
         
-            paquetes_string= str(paquetesi[3][0]).split('=')
+            paquetes_string= str(paquetesi[3][0]).split('=')[1]
             paquetes_integer=int(paquetes_string)
                
             datos=datos+str([puerto,paquetes_integer])
@@ -452,45 +458,43 @@ def echo_all(message):
     else:
         denegacion= "No tiene autorización para hacer uso de este Bot"
         bot.reply_to(message, denegacion)
-
-# class MyUDPHandler(socketserver.BaseRequestHandler):
-#     def handle(self):
-#         data = self.request[0].strip()
-#         print(data)             
-#         msgVer = int(api.decodeMessageVersion(data))
-#         if msgVer in api.protoModules:
-#             pMod = api.protoModules[msgVer]
-#             
-#         reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
-#         reqPDU = pMod.apiMessage.getPDU(reqMsg)
-#         if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-#             if msgVer == api.protoVersion2c:
-#                 agente= 'Agent   Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
-#                 trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
-#                 trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
-#                 timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
-#                 trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
-#                 chat_id= -172569293
-#                 print(trap)
-#                     #bot.send_message(chat_id, trap)
-#                     #varBinds = pMod.apiTrapPDU.getVarBinds(reqPDU)
-#                 #else:
-#                     #varBinds = pMod.apiPDU.getVarBinds(reqPDU)
-# #                 print('Var-binds:')
-# #                 for oid, val in varBinds:
-# #                     print('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
-#         return
-# #bot.polling()
-# if __name__ == "__main__":
-#     HOST, PORT = '0.0.0.0', 162
-#     server= socketserver.UDPServer((HOST, PORT), MyUDPHandler)
-#     server.allow_reuse_address= True
-#     hilo= threading.Thread(target= server.serve_forever())
-#     hilo.start()  
-#     bot.polling()
+                 
+@bot.message_handler(commands=['log'], content_types=['text'])
+def log_handler(message):
+    cid= message.chat.id
+    file= open('../log/log.txt','r')
+    bot.send_document(cid, file)
+def trap_handler():
+    class MyUDPHandler(socketserver.BaseRequestHandler):
+        def handle(self):
+            data = self.request[0].strip()             
+            msgVer = int(api.decodeMessageVersion(data))
+            if msgVer in api.protoModules:
+                pMod = api.protoModules[msgVer]
+                 
+            reqMsg, data = decoder.decode(data, asn1Spec=pMod.Message(),)
+            reqPDU = pMod.apiMessage.getPDU(reqMsg)
+            if reqPDU.isSameTypeWith(pMod.TrapPDU()):
+                if msgVer == api.protoVersion1:
+                    agente= 'Agent   Address: '+(pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint())
+                    trap_generico= 'Generic Trap: '+ (pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint())
+                    trap_especifico= 'Specific Trap: '+ (pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint())
+                    timestamp= 'Uptime: '+ (pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint())
+                    trap=agente+'\n'+trap_generico+'\n'+trap_especifico+'\n'+timestamp
+                    mandar_traps(trap)
+            return
+    if __name__ == "__main__":
+        HOST, PORT = '0.0.0.0', 162
+        with socketserver.UDPServer((HOST, PORT), MyUDPHandler)as server:
+            server.allow_reuse_address= True
+            server.serve_forever()
+        
+def mandar_traps(text):
+    chat_id= -172569293
+    bot.send_message(chat_id, str(text))
+    
 def main():
-    proceso_hijo= AbstractEventLoop.subprocess_exec(asyncio.SubprocessProtocol(), ["python","traps.py"],stdout= asyncio.subprocess.PIPE)
-    respuesta= asyncio.subprocess.streams.StreamReaderProtocol.data_received()
-    print(respuesta)
+    hilo= threading.Thread(target=trap_handler)
+    hilo.start()
     bot.polling()
 main()  
